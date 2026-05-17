@@ -72,10 +72,10 @@ function plot:edit_plot(new_name, new_c, new_dataset)
   
   self.config = {
     x = new_c.x or c.x,
-    y = new_c.y or c.x,
+    y = new_c.y or c.y,
     
     width = new_c.width or c.width,
-    height = new_c.width or c.height,
+    height = new_c.height or c.height,
     
     x_min = new_c.x_min or c.x_min,
     x_max = new_c.x_max or c.x_max,
@@ -86,9 +86,13 @@ function plot:edit_plot(new_name, new_c, new_dataset)
     left_padding = new_c.x_padding or c.x_padding,
     bottom_padding = new_c.y_padding or c.y_padding,
     
-    x_increment_amount = new_c.x_increment_amount or c.x_increment_amount,
-    y_increment_amount = new_c.y_increment_amount or c.y_increment_amount
+    x_increment_amount = new_c.x_increment_amount or c.x_padding,
+    y_increment_amount = new_c.y_increment_amount or c.y_padding
   }
+  
+  if new_c.height or new_c.width then
+    self.canvas = love.graphics.newCanvas(self.config.width, self.config.height)
+  end
   
   return self
 end
@@ -97,66 +101,107 @@ function plot:draw()
   love.graphics.setCanvas(self.canvas)
   love.graphics.clear()
   
+  love.graphics.setColor(1, 1, 1)
+  
   self:draw_axis()
   self:draw_labels()
+  self:draw_data()
   
   love.graphics.setCanvas()
 end
 
 function plot:draw_axis()
   local c = self.config
+
+  local function x_axis_safety_net()
+    local x = 0
+    local y = 0
+    
+    if 0 < c.x_min then x = c.x_min end
+    if 0 > c.x_max then x = c.x_max end
+    if 0 < c.y_min then y = c.y_min end
+    if 0 > c.y_max then y = c.y_max end
+    
+    return self:plot_to_canvas(x, y)
+  end
   
-  local x_0, y_0 = self:plot_to_canvas(0, 0)
+  local x_0, y_0 = x_axis_safety_net()
   
-  local plot_width = c.width - c.left_padding - c.right_padding
-  local plot_height = c.height - c.bottom_padding - c.top_padding
+  local x, y, w, h = self:get_plot_rect()
   
   -- Y axis
-  love.graphics.line(x_0, c.top_padding, x_0, c.top_padding + plot_height)
+  love.graphics.line(x_0, y, x_0, y + h)
   
   -- X axis
-  love.graphics.line(c.left_padding, y_0, c.left_padding + plot_width, y_0)
+  love.graphics.line(x, y_0, x + w, y_0)
 end
 function plot:draw_labels()
   local c = self.config
   
-  love.graphics.setColor(1, 1, 1)
+  local x, y, w, h = self:get_plot_rect()
   
   if c.x_increment_amount then
-    for x = c.x_min, c.x_max, c.x_increment_amount do
+    for xi = c.x_min, c.x_max, c.x_increment_amount do
       
-      local plot_x, plot_y = self:plot_to_canvas(x, 0)
-      local text = tostring(x)
+      local plot_x, plot_y = self:plot_to_canvas(xi, 0)
+      local text = tostring(xi)
       local width = love.graphics.getFont():getWidth(text)
       
-      love.graphics.print(text, plot_x - width / 2, plot_y + 6)
+      love.graphics.print(text, plot_x - width / 2, y + h + 6)
     end
   end
   
   if c.y_increment_amount then
-    for y = c.y_min, c.y_max, c.y_increment_amount do
+    for yi = c.y_min, c.y_max, c.y_increment_amount do
       
-      local plot_x, plot_y = self:plot_to_canvas(0, y)
-      local text = tostring(y)
+      local plot_x, plot_y = self:plot_to_canvas(0, yi)
+      local text = tostring(yi)
       local width = love.graphics.getFont():getWidth(text)
       local height = love.graphics.getFont():getHeight(text)
       
-      love.graphics.print(text, plot_x - width - 6, plot_y - height / 2) 
+      love.graphics.print(text, x - width - 6, plot_y - height / 2) 
     end
   end
+end
+function plot:draw_data()
+  local first = true
+  local prev_x, prev_y
+
+  for _, data in ipairs(self.dataset) do
+    local x, y = self:plot_to_canvas(data.x, data.y)
+
+    if not first then
+      love.graphics.line(prev_x, prev_y, x, y)
+    end
+
+    love.graphics.circle("line", x, y, 3)
+
+    prev_x, prev_y = x, y
+    first = false
+  end
+end
+function plot:get_plot_rect()
+  local c = self.config
+  
+  local x = c.left_padding
+  local y = c.top_padding
+  
+  local w = c.width - c.left_padding - c.right_padding
+  local h = c.height - c.bottom_padding - c.top_padding
+  
+  return x, y, w, h
 end
 function plot:plot_to_canvas(x, y)
   local c = self.config
   
-  local plot_width = c.width - c.left_padding - c.right_padding
-  local plot_height = c.height - c.bottom_padding - c.top_padding
+  local px, py, w, h = self:get_plot_rect()
   
   local new_x = (x - c.x_min) / (c.x_max - c.x_min)
   local new_y = (y - c.y_min) / (c.y_max - c.y_min)
   
-  local canvas_x = (new_x * plot_width) + c.left_padding
+  local canvas_x = (new_x * w) + px
   
-  local canvas_y = c.top_padding + (plot_height - (new_y * plot_height))
+  local canvas_y = py + (h - (new_y * h))
   
   return canvas_x, canvas_y
 end

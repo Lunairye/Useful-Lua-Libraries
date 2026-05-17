@@ -10,10 +10,10 @@ function love.load()
     width = 400,
     height = 400,
     
-    x_min = 0,
+    x_min = -100,
     x_max = 100,
     
-    y_min = 0,
+    y_min = -100,
     y_max = 100,
     
     left_padding = 30,
@@ -26,7 +26,15 @@ function love.load()
     y_increment_amount = 25
   }
   
-  test_plot = plot.init("Test Plot", config, nil)
+  local dataset = {
+    {x = -70, y = -40},
+    {x = 0, y = -25},
+    {x = 10, y = 0},
+    {x = 50, y = 30},
+    {x = 75, y = 55}
+  }
+    
+  test_plot = plot.init("Test Plot", config, dataset)
   
 end
 
