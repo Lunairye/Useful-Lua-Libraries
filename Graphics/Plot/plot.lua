@@ -2,10 +2,16 @@ local plot = {}
 
 plot.__index = plot
 
+local function clamp(value, min, max)
+  if value <= min then return min end
+  if value >= max then return max end
+  
+  return value
+end
 function plot.init(name, config, dataset)
   local p = setmetatable({}, plot)
   
-  local config = config or {}
+  config = config or {}
   
   --[[
     config = {
@@ -66,8 +72,9 @@ end
 function plot:edit_plot(new_name, new_c, new_dataset)
   local c = self.config
   
-  self.name = new_name or self.name
+  new_c = new_c or {}
   
+  self.name = new_name or self.name
   self.dataset = new_dataset or self.dataset
   
   self.config = {
@@ -83,11 +90,13 @@ function plot:edit_plot(new_name, new_c, new_dataset)
     y_min = new_c.y_min or c.y_min,
     y_max = new_c.y_max or c.y_max,
     
-    left_padding = new_c.x_padding or c.x_padding,
-    bottom_padding = new_c.y_padding or c.y_padding,
+    left_padding = new_c.left_padding or c.left_padding,
+    bottom_padding = new_c.bottom_padding or c.bottom_padding,
+    right_padding = new_c.right_padding or c.right_padding,
+    top_padding = new_c.top_padding or c.top_padding,
     
-    x_increment_amount = new_c.x_increment_amount or c.x_padding,
-    y_increment_amount = new_c.y_increment_amount or c.y_padding
+    x_increment_amount = new_c.x_increment_amount or c.x_increment_amount,
+    y_increment_amount = new_c.y_increment_amount or c.y_increment_amount
   }
   
   if new_c.height or new_c.width then
@@ -104,28 +113,21 @@ function plot:draw()
   love.graphics.setColor(1, 1, 1)
   
   self:draw_axis()
+  self:draw_grid()
   self:draw_labels()
   self:draw_data()
   
   love.graphics.setCanvas()
 end
-
+function plot:render()
+  love.graphics.draw(self.canvas, self.config.x, self.config.y)
+end
 function plot:draw_axis()
   local c = self.config
-
-  local function x_axis_safety_net()
-    local x = 0
-    local y = 0
-    
-    if 0 < c.x_min then x = c.x_min end
-    if 0 > c.x_max then x = c.x_max end
-    if 0 < c.y_min then y = c.y_min end
-    if 0 > c.y_max then y = c.y_max end
-    
-    return self:plot_to_canvas(x, y)
-  end
   
-  local x_0, y_0 = x_axis_safety_net()
+  love.graphics.setColor(1, 1, 1)
+  
+  local x_0, y_0 = self:get_axis_origin()
   
   local x, y, w, h = self:get_plot_rect()
   
@@ -135,10 +137,37 @@ function plot:draw_axis()
   -- X axis
   love.graphics.line(x, y_0, x + w, y_0)
 end
+function plot:draw_grid()
+  love.graphics.setColor(0.2, 0.2, 0.2)
+  
+  local c = self.config
+  
+  local x, y, w, h = self:get_plot_rect()
+  
+  if c.x_increment_amount then
+    for xi = c.x_min, c.x_max, c.x_increment_amount do
+      
+      local plot_x, plot_y = self:plot_to_canvas(xi, 0)
+      
+      love.graphics.line(plot_x, y, plot_x, y + h)
+    end
+  end
+  
+  if c.y_increment_amount then
+    for yi = c.y_min, c.y_max, c.y_increment_amount do
+      
+      local plot_x, plot_y = self:plot_to_canvas(0, yi)
+      
+      love.graphics.line(x, plot_y, x + w, plot_y)
+    end
+  end
+end
 function plot:draw_labels()
   local c = self.config
   
   local x, y, w, h = self:get_plot_rect()
+  
+  love.graphics.setColor(1, 1, 1)
   
   if c.x_increment_amount then
     for xi = c.x_min, c.x_max, c.x_increment_amount do
@@ -166,6 +195,8 @@ end
 function plot:draw_data()
   local first = true
   local prev_x, prev_y
+  
+  love.graphics.setColor(1, 1, 1)
 
   for _, data in ipairs(self.dataset) do
     local x, y = self:plot_to_canvas(data.x, data.y)
@@ -179,6 +210,14 @@ function plot:draw_data()
     prev_x, prev_y = x, y
     first = false
   end
+end
+function plot:get_axis_origin()
+  local c = self.config
+  
+  local x_axis = clamp(0, c.x_min, c.x_max)
+  local y_axis = clamp(0, c.y_min, c.y_max)
+  
+  return self:plot_to_canvas(x_axis, y_axis)
 end
 function plot:get_plot_rect()
   local c = self.config
