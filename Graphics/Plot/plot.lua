@@ -114,7 +114,7 @@ function plot:draw()
   
   self:draw_axis()
   self:draw_grid()
-  self:draw_labels()
+  self:draw_labels() 
   self:draw_data()
   
   love.graphics.setCanvas()
@@ -182,7 +182,7 @@ function plot:draw_labels()
   
   if c.y_increment_amount then
     for yi = c.y_min, c.y_max, c.y_increment_amount do
-      
+          
       local plot_x, plot_y = self:plot_to_canvas(0, yi)
       local text = tostring(yi)
       local width = love.graphics.getFont():getWidth(text)

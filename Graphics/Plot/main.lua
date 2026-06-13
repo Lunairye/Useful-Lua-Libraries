@@ -29,11 +29,17 @@ function love.load()
   local dataset = {}
     
   test_plot = plot.init("Test Plot", config, dataset)
+
+  config.x = 500
+  config.y = 500
+  new_plot = plot.init("New Plot", config, dataset)
   
 end
 
 function love.draw()
   test_plot:draw()
+  new_plot:draw()
   
   love.graphics.draw(test_plot.canvas, test_plot.config.x, test_plot.config.y)
+  love.graphics.draw(new_plot.canvas, new_plot.config.x, new_plot.config.y)
 end
